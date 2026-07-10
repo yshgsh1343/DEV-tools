@@ -1,17 +1,28 @@
+name: Excavator
+
 on:
   workflow_dispatch:
   schedule:
-    
-    - cron: '0 */3 * * *'
-name: Excavator
+    # Run every 4 hours, following the official Scoop buckets' Excavator cadence.
+    - cron: '20 */4 * * *'
+
+permissions:
+  contents: write
+
 jobs:
   excavate:
     name: Excavate
     runs-on: windows-latest
+
     steps:
-    - uses: actions/checkout@main
-    - name: Excavate
-      uses: ScoopInstaller/GithubActions@main
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SKIP_UPDATED: '1'
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Scoop Excavator
+        uses: ScoopInstaller/GithubActions@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_UPDATED: '1'
+          SCOOP_BRANCH: develop
