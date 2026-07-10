@@ -173,8 +173,8 @@ foreach ($app in $appsToCheck) {
     Write-Host "  🔍 Checking $($app.Name)..." -ForegroundColor Cyan
     
     try {
-        # Run scoop checkver
-        $result = scoop.cmd checkver $app.Name --force 2>&1 | Out-String
+        # Run scoop checkver and apply manifest autoupdate changes
+        $result = scoop.cmd checkver $app.Name --force --update 2>&1 | Out-String
         $summary.AppsChecked++
         
         # Check if update is available
@@ -284,20 +284,21 @@ if ($summary.Errors.Count -gt 0) {
 Write-Host "##[endgroup]" -ForegroundColor Blue
 
 # Set workflow output
-Write-Host "##[set-output name=apps_updated;]$($summary.AppsUpdated)"
-Write-Host "##[set-output name=apps_checked;]$($summary.AppsChecked)"
-Write-Host "##[set-output name=apps_with_errors;]$($summary.AppsWithErrors)"
-Write-Host "##[set-output name=has_updates;]$($summary.AppsUpdated -gt 0)"
+$hasUpdates = if ($summary.AppsUpdated -gt 0) { "true" } else { "false" }
+if ($env:GITHUB_OUTPUT) {
+    "apps_updated=$($summary.AppsUpdated)" >> $env:GITHUB_OUTPUT
+    "apps_checked=$($summary.AppsChecked)" >> $env:GITHUB_OUTPUT
+    "apps_with_errors=$($summary.AppsWithErrors)" >> $env:GITHUB_OUTPUT
+    "has_updates=$hasUpdates" >> $env:GITHUB_OUTPUT
+}
 
-# Exit with appropriate code
+# Exit successfully; the workflow uses has_updates to decide whether to commit.
 if ($summary.AppsUpdated -gt 0) {
     Write-Host "##[group]🚀 Updates Found - Commit Required" -ForegroundColor Green
-    Write-Host "Exit code: 100 (updates found)" -ForegroundColor Green
     Write-Host "##[endgroup]" -ForegroundColor Green
-    exit 100
 } else {
     Write-Host "##[group]✅ No Updates Found" -ForegroundColor Gray
-    Write-Host "Exit code: 0 (no updates)" -ForegroundColor Gray
     Write-Host "##[endgroup]" -ForegroundColor Gray
-    exit 0
 }
+
+exit 0
