@@ -173,8 +173,13 @@ foreach ($app in $appsToCheck) {
     Write-Host "  🔍 Checking $($app.Name)..." -ForegroundColor Cyan
     
     try {
-        # Run scoop checkver and apply manifest autoupdate changes
-        $result = scoop.cmd checkver $app.Name --force --update 2>&1 | Out-String
+        # Run Scoop checkver directly and apply manifest autoupdate changes
+        $scoopHome = (scoop.cmd prefix scoop | Select-Object -First 1).Trim()
+        $checkverScript = Join-Path $scoopHome "bin/checkver.ps1"
+        if (-not (Test-Path $checkverScript)) {
+            throw "Scoop checkver script not found: $checkverScript"
+        }
+        $result = & $checkverScript $app.Name -Dir $ManifestsPath -Update 2>&1 | Out-String
         $summary.AppsChecked++
         
         # Check if update is available
@@ -249,8 +254,12 @@ Write-Host "##[endgroup]" -ForegroundColor Blue
 # Save tracker
 Write-Host "##[group]💾 Saving Tracker" -ForegroundColor Blue
 try {
+    $trackerDir = Split-Path $TrackerFile -Parent
+    if (-not (Test-Path $trackerDir)) {
+        New-Item -ItemType Directory -Path $trackerDir -Force | Out-Null
+    }
     $trackerJson = $tracker | ConvertTo-Json -Depth 3
-    Set-Content -Path $TrackerFile -Value $trackerJson
+    Set-Content -Path $TrackerFile -Value $trackerJson -ErrorAction Stop
     Write-Host "Tracker saved with $($tracker.Count) apps" -ForegroundColor Green
 } catch {
     $errorMsg = "Failed to save tracker: $_"
